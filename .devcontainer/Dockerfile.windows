@@ -1,0 +1,31 @@
+ARG VARIANT="windowsservercore-ltsc2022"
+ARG PYTHON="3.10"
+FROM --platform=windows/amd64 python:${PYTHON}-${VARIANT}
+
+USER ContainerAdministrator
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Installl powershell
+# Windows Server doesn't bundle winget, and it a faff to get it on: https://github.com/microsoft/winget-cli/issues/702
+# RUN winget install --id Microsoft.Powershell --source winget
+
+# Install chocolatey
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Install git and pwsh
+RUN choco install -y --limit-output git.install
+RUN choco install -y --limit-output powershell-core
+
+# Use pwsh as that actually supports &&
+SHELL [ "pwsh", "-Command" ]
+
+RUN \
+    python --version \
+    && python -m pip install pipx \
+    && pipx ensurepath \
+    && pipx install tox \
+    && pipx install hatch
+
+
+CMD [ "pwsh" ]
